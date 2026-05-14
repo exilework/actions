@@ -123,9 +123,31 @@ Welcome to the GitHub Self-Hosted Runner Dockerization repository. This project 
 
 ### Environment Variables
 
-- `REPO`: The GitHub repository to register the runner to (format: `<owner>/<repo>`). It can also be set to an organization instead of a repository (format: `<owner>`).
-- `REG_TOKEN`: The registration token for the self-hosted runner from the GitHub repository settings.
-- `NAME`: The name of the self-hosted runner.
+**Required**
+
+| Variable | Description |
+|----------|-------------|
+| `REPO` | Repository (`<owner>/<repo>`) or organization (`<owner>`) to register the runner to. |
+| `REG_TOKEN` | Registration token from GitHub → Settings → Actions → Runners → "New self-hosted runner". Expires after 1 hour. |
+| `NAME` | Display name for this runner. |
+
+**Optional**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LABELS` | _(none)_ | Comma-separated labels, e.g. `self-hosted,linux,x64,gpu`. |
+| `RUNNER_GROUP` | _(default group)_ | Runner group name — org/enterprise only. |
+| `WORK_DIR` | `_work` | Custom workspace directory inside the container. |
+| `EPHEMERAL` | `false` | Set to `true` to deregister the runner after one job completes. |
+| `DISABLE_AUTO_UPDATE` | `false` | Set to `true` to prevent the runner from auto-updating. |
+
+### Custom Runner Version
+
+Override the runner version at build time without editing the Dockerfile:
+
+```sh
+docker build --build-arg RUNNER_VERSION=2.332.0 -t custom-github-runner:latest ./docker/linux
+```
 
 ## Notes for macOS Users
 

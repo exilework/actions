@@ -6,7 +6,15 @@
 
 cd /home/docker/actions-runner || exit
 
-./config.sh --url https://github.com/${REPO} --token ${REG_TOKEN} --name ${NAME}
+CONFIG_ARGS="--url https://github.com/${REPO} --token ${REG_TOKEN} --name ${NAME}"
+
+[ -n "${LABELS}" ]       && CONFIG_ARGS="${CONFIG_ARGS} --labels ${LABELS}"
+[ -n "${RUNNER_GROUP}" ] && CONFIG_ARGS="${CONFIG_ARGS} --runnergroup ${RUNNER_GROUP}"
+[ -n "${WORK_DIR}" ]     && CONFIG_ARGS="${CONFIG_ARGS} --work ${WORK_DIR}"
+[ "${EPHEMERAL}" = "true" ]            && CONFIG_ARGS="${CONFIG_ARGS} --ephemeral"
+[ "${DISABLE_AUTO_UPDATE}" = "true" ]  && CONFIG_ARGS="${CONFIG_ARGS} --disableupdate"
+
+./config.sh ${CONFIG_ARGS}
 
 cleanup() {
   echo "Removing runner..."
