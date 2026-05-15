@@ -12,8 +12,13 @@ RUN useradd -m docker
 # Install necessary packages
 RUN apt-get update && apt install -y --no-install-recommends \
     curl build-essential libssl-dev libffi-dev python3 python3-venv python3-dev python3-pip jq \
+    sudo docker.io \
     && apt-get -yqq install ssh \
     && rm -rf /var/lib/apt/lists/*
+
+# Add docker user to docker group and allow GID fix at startup
+RUN usermod -aG docker docker \
+    && echo "docker ALL=(root) NOPASSWD: /usr/sbin/groupmod" >> /etc/sudoers
 # Set up the actions runner
 RUN cd /home/docker && mkdir actions-runner && cd actions-runner \
     && curl -o actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz -L https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz \

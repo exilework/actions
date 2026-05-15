@@ -11,12 +11,17 @@ RUN apt-get update && apt-get install -y \
     jq \
     python3 \
     sudo \
+    docker.io \
     libicu-dev \
     libkrb5-3 \
     zlib1g \
     iputils-ping \
     openssh-client \
     && rm -rf /var/lib/apt/lists/*
+
+# Add runner user to docker group and allow GID fix at startup
+RUN usermod -aG docker runner \
+    && echo "runner ALL=(root) NOPASSWD: /usr/sbin/groupmod" >> /etc/sudoers
 
 # Set up the runner user
 WORKDIR /home/runner

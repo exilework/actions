@@ -4,6 +4,11 @@
 : "${REG_TOKEN:?REG_TOKEN env var required}"
 : "${NAME:?NAME env var required}"
 
+if [ -S /var/run/docker.sock ]; then
+    DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)
+    sudo groupmod -g "$DOCKER_GID" docker 2>/dev/null || true
+fi
+
 cd /home/runner/actions-runner || exit
 
 CONFIG_ARGS="--url https://github.com/${REPO} --token ${REG_TOKEN} --name ${NAME}"
