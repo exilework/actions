@@ -1,162 +1,190 @@
-# Self-Hosted Runner Dockerization
+# Self-Hosted GitHub Actions Runner
 
-Welcome to the GitHub Self-Hosted Runner Dockerization repository. This project provides a Dockerized solution for setting up a self-hosted GitHub Actions runner.
+Dockerized GitHub Actions self-hosted runners for Linux (x64) and macOS (ARM64). Deploy in minutes, scale with replicas, deregister cleanly on shutdown.
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/youssefbrr/self-hosted-runner?style=social)](https://github.com/youssefbrr/self-hosted-runner/stargazers)
+
+---
+
+## Quick Start
+
+```sh
+git clone https://github.com/youssefbrr/self-hosted-runner.git
+cd self-hosted-runner
+cp .env.example .env        # fill in REPO, REG_TOKEN, NAME
+```
+
+**Linux (x64)**
+```sh
+docker-compose -f docker/linux/docker-compose.yml up -d
+```
+
+**macOS / ARM64**
+```sh
+docker-compose -f docker/mac/docker-compose.yml up -d
+```
+
+> **REG_TOKEN expires after 1 hour.** Generate a fresh one from  
+> GitHub → Settings → Actions → Runners → "New self-hosted runner" before each deploy.
+
+---
 
 ## Features
 
-- **Docker Compose Setup**: Easily deploy self-hosted runners using Docker Compose.
-- **Customizable**: Use the provided Docker image or build your own using the Dockerfile.
-- **Scalable**: Deploy multiple runner replicas with resource constraints.
-- **Cross-Platform**: Support for Linux and macOS (ARM64) environments.
+- **Zero-config start** — set 3 env vars and run
+- **Clean shutdown** — SIGINT/SIGTERM deregisters the runner automatically
+- **Scalable** — Linux defaults to 2 replicas; tune with `deploy.replicas`
+- **Ephemeral mode** — run once and self-destruct (`EPHEMERAL=true`)
+- **Docker-in-Docker** — macOS image mounts the Docker socket for nested builds
+- **Healthchecks** — built-in `pgrep run.sh` health monitoring on both variants
 
-## Repository Contents
+---
 
-- `LICENSE`: The license file for this project.
-- `README.md`: The documentation file you are currently reading.
-- `docker/linux/`: Directory containing Linux-specific Docker files:
-  - `Dockerfile`: Dockerfile for building the Linux runner image.
-  - `docker-compose.yml`: Docker Compose file to deploy the self-hosted runner on Linux.
-  - `start.sh`: Start script for the Linux runner.
-- `docker/mac/`: Directory containing macOS-specific Docker files:
-  - `Dockerfile`: Dockerfile for building the macOS (ARM64) runner image.
-  - `docker-compose.yml`: Docker Compose file to deploy the self-hosted runner on macOS.
-  - `start.sh`: Start script for the macOS runner.
+## Architecture
 
-## Getting Started
+```
+docker/
+├── linux/          Ubuntu 24.04, x64, runner v2.331.0
+│   ├── Dockerfile        user: docker, workdir: /home/docker/actions-runner
+│   ├── docker-compose.yml  2 replicas · 0.5 CPU · 512M each
+│   └── start.sh
+└── mac/            Ubuntu 24.04, ARM64, runner v2.331.0
+    ├── Dockerfile        user: runner, workdir: /home/runner/actions-runner
+    ├── docker-compose.yml  1 replica · 1 CPU · 1G · Docker socket mounted
+    └── start.sh
+```
 
-### Prerequisites
+Both `start.sh` scripts: configure via `config.sh` → trap SIGINT/SIGTERM for deregistration → exec `run.sh`.
 
-- Docker
-- Docker Compose
-
-### Using Docker Compose on Linux
-
-1. Clone the repository:
-
-    ```sh
-    git clone https://github.com/youssefbrr/self-hosted-runner.git
-    cd self-hosted-runner
-    ```
-
-2. Copy the example environment file and fill in your values:
-
-    ```sh
-    cp .env.example .env
-    # Edit .env to add your REPO, REG_TOKEN, and NAME values
-    ```
-
-3. Deploy the self-hosted runner:
-
-    ```sh
-    docker-compose -f docker/linux/docker-compose.yml up -d
-    ```
-
-### Using Docker Compose on macOS
-
-1. Clone the repository:
-
-   ```sh
-   git clone https://github.com/youssefbrr/self-hosted-runner.git
-   cd self-hosted-runner
-   ```
-
-2. Copy the example environment file and fill in your values:
-
-   ```sh
-   cp .env.example .env
-   # Edit .env to add your REPO, REG_TOKEN, and NAME values
-   ```
-
-3. Deploy the self-hosted runner:
-
-   ```sh
-   docker-compose -f docker/mac/docker-compose.yml up -d
-   ```
-
-### Building Your Own Docker Image on Linux
-
-1. Clone the repository:
-
-   ```sh
-   git clone https://github.com/youssefbrr/self-hosted-runner.git
-   cd self-hosted-runner
-   ```
-
-2. Build the Docker image:
-
-   ```sh
-   cd docker/linux
-   docker build -t custom-github-runner:latest ./
-   ```
-
-3. Edit the `docker/linux/docker-compose.yml` file to use your custom image.
-
-4. Deploy the self-hosted runner:
-   ```sh
-   docker-compose -f docker/linux/docker-compose.yml up -d
-   ```
-
-### Building Your Own Docker Image on macOS
-
-1. Clone the repository:
-
-   ```sh
-   git clone https://github.com/youssefbrr/self-hosted-runner.git
-   cd self-hosted-runner
-   ```
-
-2. Build the Docker image:
-
-   ```sh
-   cd docker/mac
-   docker build -t custom-github-runner-mac:latest ./
-   ```
-
-3. Edit the `docker/mac/docker-compose.yml` file to use your custom image.
-
-4. Deploy the self-hosted runner:
-   ```sh
-   docker-compose -f docker/mac/docker-compose.yml up -d
-   ```
+---
 
 ## Configuration
 
-### Environment Variables
+Copy `.env.example` to `.env` and set your values. The `.env` file is gitignored.
 
-**Required**
+### Required
 
 | Variable | Description |
 |----------|-------------|
-| `REPO` | Repository (`<owner>/<repo>`) or organization (`<owner>`) to register the runner to. |
-| `REG_TOKEN` | Registration token from GitHub → Settings → Actions → Runners → "New self-hosted runner". Expires after 1 hour. |
-| `NAME` | Display name for this runner. |
+| `REPO` | `owner/repo` for repo-level or `owner` for org-level runners |
+| `REG_TOKEN` | Registration token from GitHub Settings (expires in 1 hour) |
+| `NAME` | Display name shown in GitHub Actions UI |
 
-**Optional**
+### Optional
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `LABELS` | _(none)_ | Comma-separated labels, e.g. `self-hosted,linux,x64,gpu`. |
-| `RUNNER_GROUP` | _(default group)_ | Runner group name — org/enterprise only. |
-| `WORK_DIR` | `_work` | Custom workspace directory inside the container. |
-| `EPHEMERAL` | `false` | Set to `true` to deregister the runner after one job completes. |
-| `DISABLE_AUTO_UPDATE` | `false` | Set to `true` to prevent the runner from auto-updating. |
+| `LABELS` | _(none)_ | Comma-separated labels, e.g. `self-hosted,linux,x64,gpu` |
+| `RUNNER_GROUP` | _(default)_ | Runner group name — org/enterprise only |
+| `WORK_DIR` | `_work` | Workspace directory inside the container |
+| `EPHEMERAL` | `false` | `true` → deregister after one job |
+| `DISABLE_AUTO_UPDATE` | `false` | `true` → prevent runner self-updates |
 
-### Custom Runner Version
-
-Override the runner version at build time without editing the Dockerfile:
+### Override Runner Version
 
 ```sh
 docker build --build-arg RUNNER_VERSION=2.332.0 -t custom-github-runner:latest ./docker/linux
 ```
 
-## Notes for macOS Users
+---
 
-For macOS, keep in mind:
+## Registering to an Organization
 
-1. You need to have Docker Desktop for Mac installed and running.
-2. The macOS runner targets `linux/arm64` and runs emulated on Apple Silicon via Docker Desktop.
-3. Performance may differ from the Linux version due to the virtualization layer.
+Set `REPO` to just the org name:
 
-## Healthchecks
+```env
+REPO=my-org
+```
 
-Both Linux and macOS services include healthchecks that verify the runner process is running using `pgrep -f run.sh`. Health checks begin after a 40s start period and run every 30s.
+The runner will register at org level and be available to all repositories in that org.
+
+---
+
+## Workflows Example
+
+Reference your runner in any workflow file:
+
+```yaml
+jobs:
+  build:
+    runs-on: [self-hosted, linux]
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "Running on self-hosted runner"
+```
+
+Use your custom labels to target specific runners:
+
+```yaml
+runs-on: [self-hosted, linux, gpu]
+```
+
+---
+
+## Scaling
+
+Adjust replicas in `docker-compose.yml` under `deploy.replicas`. GitHub will distribute jobs across all registered runners automatically.
+
+```yaml
+deploy:
+  replicas: 4       # spin up 4 concurrent runners
+  resources:
+    limits:
+      cpus: '0.5'
+      memory: 512M
+```
+
+---
+
+## Troubleshooting
+
+**Runner doesn't appear in GitHub Settings**
+- Check `REG_TOKEN` — it expires after 1 hour. Generate a new one.
+- Verify `REPO` format: `owner/repo` (no leading slash, no trailing slash).
+
+**Logs**
+```sh
+docker-compose -f docker/linux/docker-compose.yml logs -f
+```
+
+**Health status**
+```sh
+docker-compose -f docker/linux/docker-compose.yml ps
+```
+
+**Runner stuck / won't deregister**
+```sh
+docker-compose -f docker/linux/docker-compose.yml down
+```
+`down` sends SIGTERM → `start.sh` cleanup → runner deregisters cleanly.
+
+---
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for the vulnerability reporting policy.
+
+Key practices in this project:
+- Runners execute as non-root users (`docker` on Linux, `runner` on ARM64)
+- Secrets live in `.env` (gitignored) — never hardcoded in compose files
+- `REG_TOKEN` is used only at registration time; not stored after config
+
+---
+
+## Contributing
+
+Contributions welcome. Please:
+
+1. Fork the repo and create a branch from `main`
+2. Keep changes scoped — one feature or fix per PR
+3. Test your change by actually spinning up the container
+4. Open a pull request with a clear description of what and why
+
+For bugs or feature requests, [open an issue](https://github.com/youssefbrr/self-hosted-runner/issues).
+
+---
+
+## License
+
+[MIT](LICENSE) — use freely, attribution appreciated.
