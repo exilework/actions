@@ -1,48 +1,35 @@
 FROM --platform=linux/arm64 ubuntu:24.04
 
 ARG RUNNER_VERSION="2.335.1"
+ARG DEBIAN_FRONTEND=noninteractive
 
-# Add a user for the runner
 RUN useradd -m -s /bin/bash runner
 
-# Install necessary packages including .NET Core dependencies
-RUN apt-get update && apt-get install -y \
-    curl \
-    git \
-    jq \
-    python3 \
-    sudo \
-    docker.io \
-    unzip \
-    libicu-dev \
-    libkrb5-3 \
-    zlib1g \
-    iputils-ping \
-    openssh-client \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl git jq unzip tar ca-certificates sudo ssh iputils-ping \
+    build-essential libssl-dev libffi-dev pkg-config \
+    python3 python3-venv python3-dev python3-pip \
+    docker.io postgresql-client redis-tools netcat-openbsd \
+    libicu-dev libkrb5-3 zlib1g \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Add runner user to docker group and allow GID fix at startup
 RUN usermod -aG docker runner \
-    && echo "runner ALL=(root) NOPASSWD: /usr/sbin/groupmod" >> /etc/sudoers
+    && echo "runner ALL=(root) NOPASSWD: /usr/bin/chmod" >> /etc/sudoers
 
-# Set up the runner user
 WORKDIR /home/runner
 
-# Set up the actions runner for ARM64
 RUN mkdir -p /home/runner/actions-runner && cd /home/runner/actions-runner \
     && curl -o actions-runner-linux-arm64-${RUNNER_VERSION}.tar.gz -L https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-arm64-${RUNNER_VERSION}.tar.gz \
     && tar xzf actions-runner-linux-arm64-${RUNNER_VERSION}.tar.gz
 
-# Install dependencies
-RUN cd /home/runner/actions-runner \
+RUN chown -R runner:runner /home/runner \
+    && cd /home/runner/actions-runner \
     && ./bin/installdependencies.sh
 
-# Copy the start script and make it executable
-COPY start.sh /home/runner/start.sh
-RUN chown runner:runner /home/runner/start.sh && chmod +x /home/runner/start.sh
+COPY --chmod=+x start.sh /home/runner/start.sh
+RUN chown runner:runner /home/runner/start.sh
 
-# Switch to runner user
 USER runner
 
-# Define the entrypoint
-ENTRYPOINT ["/home/runner/start.sh"] 
+ENTRYPOINT ["/home/runner/start.sh"]

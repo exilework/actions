@@ -6,31 +6,27 @@ ARG DEBIAN_FRONTEND=noninteractive
 # Update and upgrade the system
 RUN apt update -y && apt upgrade -y && rm -rf /var/lib/apt/lists/*
 
-# Add a user named docker
 RUN useradd -m docker
 
-# Install necessary packages
 RUN apt-get update && apt install -y --no-install-recommends \
-    curl git build-essential libssl-dev libffi-dev python3 python3-venv python3-dev python3-pip jq \
-    sudo docker.io unzip \
-    && apt-get -yqq install ssh \
+    curl wget git jq unzip tar ca-certificates sudo ssh \
+    build-essential libssl-dev libffi-dev pkg-config \
+    python3 python3-venv python3-dev python3-pip \
+    docker.io postgresql-client redis-tools netcat-openbsd \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Add docker user to docker group and allow GID fix at startup
 RUN usermod -aG docker docker \
-    && echo "docker ALL=(root) NOPASSWD: /usr/sbin/groupmod" >> /etc/sudoers
-# Set up the actions runner
+    && echo "docker ALL=(root) NOPASSWD: /usr/bin/chmod" >> /etc/sudoers
+
 RUN cd /home/docker && mkdir actions-runner && cd actions-runner \
     && curl -o actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz -L https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz \
     && tar xzf actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz
 
-# Change ownership to docker user and install dependencies
 RUN chown -R docker /home/docker && /home/docker/actions-runner/bin/installdependencies.sh
 
-# Copy the start script and make it executable
 COPY --chmod=+x start.sh /start.sh
 
-# Switch to docker user
 USER docker
 
 # Define the entrypoint

@@ -5,8 +5,7 @@
 : "${NAME:?NAME env var required}"
 
 if [ -S /var/run/docker.sock ]; then
-    DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)
-    sudo groupmod -o -g "$DOCKER_GID" docker 2>/dev/null || true
+    sudo chmod 666 /var/run/docker.sock
 fi
 
 # erlef/setup-beam reads ImageOS to pick the right precompiled OTP/Elixir build
