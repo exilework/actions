@@ -3,6 +3,7 @@ services:
     build: .
     image: youssefbrr/github-actions:latest # You can use this image or build your own
     restart: always
+    network_mode: host
     env_file:
       - ../../.env
     volumes:
