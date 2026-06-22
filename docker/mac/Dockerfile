@@ -1,6 +1,6 @@
 FROM --platform=linux/arm64 ubuntu:24.04
 
-ARG RUNNER_VERSION="2.331.0"
+ARG RUNNER_VERSION="2.335.1"
 
 # Add a user for the runner
 RUN useradd -m -s /bin/bash runner
@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     python3 \
     sudo \
     docker.io \
+    unzip \
     libicu-dev \
     libkrb5-3 \
     zlib1g \

@@ -6,8 +6,12 @@
 
 if [ -S /var/run/docker.sock ]; then
     DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)
-    sudo groupmod -g "$DOCKER_GID" docker 2>/dev/null || true
+    sudo groupmod -o -g "$DOCKER_GID" docker 2>/dev/null || true
 fi
+
+# erlef/setup-beam reads ImageOS to pick the right precompiled OTP/Elixir build
+. /etc/os-release
+export ImageOS="ubuntu${VERSION_ID%%.*}"
 
 cd /home/runner/actions-runner || exit
 
